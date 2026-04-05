@@ -17,7 +17,7 @@ import { useGlobalSync } from "@/context/global-sync"
 import { useLanguage } from "@/context/language"
 import { useProviders } from "@/hooks/use-providers"
 
-export function DialogConnectProvider(props: { provider: string }) {
+export function DialogConnectProvider(props: { provider: string; onBack?: () => void }) {
   const dialog = useDialog()
   const globalSync = useGlobalSync()
   const globalSDK = useGlobalSDK()
@@ -43,7 +43,7 @@ export function DialogConnectProvider(props: { provider: string }) {
   const provider = createMemo(
     () =>
       providers.all().find((x) => x.id === props.provider) ??
-      globalSync.data.provider.all.find((x) => x.id === props.provider)!,
+      globalSync.data.provider.all.find((x) => x.id === props.provider) ?? { id: props.provider, name: props.provider, env: [], models: {} },
   )
   const fallback = createMemo<ProviderAuthMethod[]>(() => [
     {
@@ -343,8 +343,9 @@ export function DialogConnectProvider(props: { provider: string }) {
   }
 
   function goBack() {
+    const back = props.onBack ?? all
     if (methods().length === 1) {
-      all()
+      back()
       return
     }
     if (store.authorization) {
@@ -355,7 +356,7 @@ export function DialogConnectProvider(props: { provider: string }) {
       dispatch({ type: "method.reset" })
       return
     }
-    all()
+    back()
   }
 
   function MethodSelection() {

@@ -118,6 +118,7 @@ export const useSessionCommands = (actions: SessionCommandContext) => {
   const mcpCommand = withCategory(language.t("command.category.mcp"))
   const agentCommand = withCategory(language.t("command.category.agent"))
   const permissionsCommand = withCategory(language.t("command.category.permissions"))
+  const juntoCommand = withCategory("Junto")
 
   const isAutoAcceptActive = () => {
     const sessionID = params.id
@@ -518,6 +519,12 @@ export const useSessionCommands = (actions: SessionCommandContext) => {
     }),
   ]
 
+  const chooseJunto = () => {
+    void import("@/components/dialog-junto-dashboard").then((x) => {
+      dialog.show(() => <x.DialogJuntoDashboard />)
+    })
+  }
+
   const mcpCmds = () => [
     mcpCommand({
       id: "mcp.toggle",
@@ -559,6 +566,17 @@ export const useSessionCommands = (actions: SessionCommandContext) => {
     }),
   ]
 
+  const juntoCmds = () => [
+    juntoCommand({
+      id: "junto.dashboard",
+      title: "Junto Dashboard",
+      description: "View credit balance, team info, and usage statistics",
+      keybind: "mod+j",
+      slash: "junto",
+      onSelect: chooseJunto,
+    }),
+  ]
+
   command.register("session", () => [
     ...sessionCmds(),
     ...shareCmds(),
@@ -571,5 +589,6 @@ export const useSessionCommands = (actions: SessionCommandContext) => {
     ...mcpCmds(),
     ...agentCmds(),
     ...permissionsCmds(),
+    ...juntoCmds(),
   ])
 }

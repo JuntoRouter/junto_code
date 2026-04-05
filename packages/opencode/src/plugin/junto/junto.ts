@@ -117,15 +117,7 @@ export async function JuntoAuthPlugin(_input: PluginInput): Promise<Hooks> {
         {
           type: "oauth" as const,
           label: "Login with Junto",
-          prompts: [
-            {
-              type: "text" as const,
-              key: "teamId",
-              message: "Team ID (leave empty for personal billing)",
-              placeholder: "e.g. a927886f-...",
-            },
-          ],
-          async authorize(inputs) {
+          async authorize() {
             const port = await findFreePort()
             let resolveToken: (token: string) => void
             const tokenPromise = new Promise<string>((resolve) => {
@@ -159,9 +151,8 @@ export async function JuntoAuthPlugin(_input: PluginInput): Promise<Hooks> {
                   const token = await tokenPromise
                   httpServer.close()
 
-                  const teamId = inputs?.teamId?.trim() || undefined
-                  log.info("Token received, creating API key...", { teamId })
-                  const apiKey = await ensureApiKey(token, teamId)
+                  log.info("Token received, creating personal API key...")
+                  const apiKey = await ensureApiKey(token)
                   log.info("API key created successfully")
 
                   return { type: "success" as const, key: apiKey }
@@ -173,10 +164,6 @@ export async function JuntoAuthPlugin(_input: PluginInput): Promise<Hooks> {
               },
             }
           },
-        },
-        {
-          type: "api" as const,
-          label: "Enter API Key manually",
         },
       ],
     },
