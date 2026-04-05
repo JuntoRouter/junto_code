@@ -986,6 +986,18 @@ export namespace Provider {
           const modelsDev = yield* Effect.promise(() => ModelsDev.get())
           const database = mapValues(modelsDev, fromModelsDevProvider)
 
+          // Built-in Junto Router provider
+          if (!database["junto"]) {
+            database["junto"] = {
+              id: ProviderID.junto,
+              name: "Junto Router",
+              env: [],
+              options: {},
+              source: "custom",
+              models: {},
+            }
+          }
+
           const providers: Record<ProviderID, Info> = {} as Record<ProviderID, Info>
           const languages = new Map<string, LanguageModelV3>()
           const modelLoaders: {
