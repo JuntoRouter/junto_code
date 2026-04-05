@@ -4,6 +4,7 @@ import { Flag } from "@/flag/flag"
 import { Installation } from "@/installation"
 
 export async function upgrade() {
+  // Junto fork: check our own releases, not upstream
   const config = await Config.getGlobal()
   const method = await Installation.method()
   const latest = await Installation.latest(method).catch(() => {})
