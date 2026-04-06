@@ -394,7 +394,7 @@ export const DialogJuntoDashboard: Component = () => {
                   fallback={<p class="text-text-weaker">No usage data in the last 30 days</p>}
                 >
                   {(() => {
-                    const records = () => data().usage ?? []
+                    const records = () => (data().usage ?? []).toSorted((a, b) => b.date.localeCompare(a.date))
                     const totalRequests = () => records().reduce((s, r) => s + r.requests, 0)
                     const totalTokens = () => records().reduce((s, r) => s + r.totalTokens, 0)
                     const totalCost = () => records().reduce((s, r) => s + r.costUsd, 0)
