@@ -1,4 +1,4 @@
-import { Component, createMemo, createResource, createSignal, For, Show } from "solid-js"
+import { Component, createEffect, createMemo, createResource, createSignal, For, Show } from "solid-js"
 import { useGlobalSDK } from "@/context/global-sdk"
 import { useServer } from "@/context/server"
 import { useDialog } from "@opencode-ai/ui/context/dialog"
@@ -92,37 +92,29 @@ async function fetchDashboard(apiKey: string): Promise<Dashboard> {
 }
 
 type MediaModel = { id: string; owned_by: string }
-type MediaType = "image" | "audio_tts" | "audio_stt" | "video"
+type MediaType = "image" | "audio" | "video"
 
-const MEDIA_MODEL_PATTERNS: Record<MediaType, RegExp[]> = {
-  image: [/dall-e/i, /gpt-image/i, /flux/i, /gemini.*image/i, /stable-diffusion/i],
-  audio_tts: [/tts/i, /gemini.*tts/i],
-  audio_stt: [/whisper/i],
-  video: [/veo/i],
-}
-
-function classifyMediaModel(modelId: string): MediaType | undefined {
-  for (const [type, patterns] of Object.entries(MEDIA_MODEL_PATTERNS) as [MediaType, RegExp[]][]) {
-    if (patterns.some((p) => p.test(modelId))) return type
+async function fetchModelsByOutput(output: string): Promise<MediaModel[]> {
+  try {
+    const res = await fetch(`${JUNTO_API_BASE}/models?output=${output}`)
+    if (!res.ok) return []
+    const data = (await res.json()) as { data: Array<{ id: string; owned_by: string }> }
+    return data.data ?? []
+  } catch {
+    return []
   }
-  return undefined
 }
 
 async function fetchMediaModels(): Promise<Record<MediaType, MediaModel[]>> {
-  const result: Record<MediaType, MediaModel[]> = { image: [], audio_tts: [], audio_stt: [], video: [] }
-  try {
-    const res = await fetch(`${JUNTO_API_BASE}/models`)
-    if (!res.ok) return result
-    const data = (await res.json()) as { data: Array<{ id: string; owned_by: string }> }
-    for (const m of data.data ?? []) {
-      const type = classifyMediaModel(m.id)
-      if (type) result[type].push({ id: m.id, owned_by: m.owned_by })
-    }
-  } catch {}
-  return result
+  const [image, audio, video] = await Promise.all([
+    fetchModelsByOutput("image"),
+    fetchModelsByOutput("audio"),
+    fetchModelsByOutput("video"),
+  ])
+  return { image, audio, video }
 }
 
-type MediaDefaults = { image?: string; audio_tts?: string; audio_stt?: string; video?: string }
+type MediaDefaults = { image?: string; audio?: string; video?: string }
 const MEDIA_DEFAULTS_KEY = "junto-media-defaults"
 
 function loadMediaDefaults(): MediaDefaults {
@@ -166,6 +158,20 @@ export const DialogJuntoDashboard: Component = () => {
       return fetchDashboard(key)
     },
   )
+
+  // Cache profile to sidecar storage so sidebar can read it
+  createEffect(() => {
+    const data = dashboard()
+    const http = server.current?.http
+    if (!data?.profile || !http) return
+    const headers: Record<string, string> = { "Content-Type": "application/json" }
+    if (http.password) headers["Authorization"] = `Basic ${btoa(`${http.username ?? "opencode"}:${http.password}`)}`
+    void fetch(`${http.url}/storage/junto-profile`, {
+      method: "PUT",
+      headers,
+      body: JSON.stringify({ email: data.profile.email, photoURL: data.profile.photoURL }),
+    }).catch(() => {})
+  })
 
   const [tab, setTab] = createSignal<Tab>("overview")
   const [busy, setBusy] = createSignal(false)
@@ -526,9 +532,8 @@ export const DialogJuntoDashboard: Component = () => {
                   {(models) => {
                     const sections: { type: MediaType; label: string; fallback: string }[] = [
                       { type: "image", label: "Image Generation", fallback: "openai/gpt-image-1" },
-                      { type: "audio_tts", label: "Text-to-Speech", fallback: "openai/tts-1" },
+                      { type: "audio", label: "Audio (TTS)", fallback: "openai/tts-1" },
                       { type: "video", label: "Video Generation", fallback: "google/veo-3.1-fast-generate-preview" },
-                      { type: "audio_stt", label: "Speech-to-Text", fallback: "openai/whisper-1" },
                     ]
                     return (
                       <div class="flex flex-col gap-4">

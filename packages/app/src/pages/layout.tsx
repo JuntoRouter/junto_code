@@ -3,6 +3,7 @@ import {
   createEffect,
   createMemo,
   createResource,
+  createSignal,
   For,
   on,
   onCleanup,
@@ -2343,21 +2344,21 @@ export default function Layout(props: ParentProps) {
   }
 
   // ── Junto Account Button ──
-  const juntoConnected = createMemo(() => providers.connected().some((p) => p.id === "junto"))
-  const [juntoProfile] = createResource(juntoConnected, async (connected) => {
-    if (!connected) return undefined
-    try {
-      const res = await globalSDK.client.config.providers()
-      const key = (res.data?.providers ?? []).find((p) => p.id === "junto")?.key
-      if (!key) return undefined
-      const profile = await fetch("https://us-central1-ms-junto.cloudfunctions.net/juntoRouter/api/v1/me/profile", {
-        headers: { Authorization: `Bearer ${key}` },
-      })
-      if (!profile.ok) return undefined
-      return (await profile.json()) as { email: string; photoURL?: string | null }
-    } catch {
-      return undefined
+  const juntoConnected = createMemo(() => globalSync.data.provider.connected.includes("junto"))
+  const [juntoProfile, setJuntoProfile] = createSignal<{ email: string; photoURL?: string | null } | undefined>()
+  createEffect(() => {
+    const connected = globalSync.data.provider.connected
+    const http = server.current?.http
+    if (!connected.includes("junto") || !http?.url) {
+      setJuntoProfile(undefined)
+      return
     }
+    const headers: Record<string, string> = {}
+    if (http.password) headers["Authorization"] = `Basic ${btoa(`${http.username ?? "opencode"}:${http.password}`)}`
+    fetch(`${http.url}/storage/junto-profile`, { headers })
+      .then((res) => res.ok ? res.json() : null)
+      .then((data) => { if (data?.email) setJuntoProfile(data) })
+      .catch(() => {})
   })
   const openJuntoDashboard = () => {
     void import("@/components/dialog-junto-dashboard").then((x) => {
@@ -2418,7 +2419,7 @@ export default function Layout(props: ParentProps) {
       openProjectKeybind={() => command.keybind("project.open")}
       onOpenProject={chooseProject}
       renderProjectOverlay={projectOverlay}
-      accountButton={accountButton()}
+      renderAccountButton={accountButton}
       settingsLabel={() => language.t("sidebar.settings")}
       settingsKeybind={() => command.keybind("settings.open")}
       onOpenSettings={openSettings}

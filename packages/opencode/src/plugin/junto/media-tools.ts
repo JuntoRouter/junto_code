@@ -159,7 +159,7 @@ export const junto_generate_audio = tool({
     if (!apiKey) return "Error: Not connected to Junto Router. Please login first via the Junto Dashboard."
 
     const defaults = await getMediaDefaults()
-    const model = args.model || defaults.audio_tts || "openai/tts-1"
+    const model = args.model || defaults.audio || "openai/tts-1"
 
     await ctx.ask({
       permission: "media",

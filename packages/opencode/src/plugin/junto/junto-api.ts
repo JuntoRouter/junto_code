@@ -116,46 +116,33 @@ export namespace JuntoApi {
     pricing?: Record<string, unknown>
   }
 
-  export type MediaType = "image" | "audio_tts" | "audio_stt" | "video"
+  export type MediaType = "image" | "audio" | "video"
 
-  const MEDIA_MODEL_PATTERNS: Record<MediaType, RegExp[]> = {
-    image: [/dall-e/i, /gpt-image/i, /flux/i, /gemini.*image/i, /stable-diffusion/i],
-    audio_tts: [/tts/i, /gemini.*tts/i],
-    audio_stt: [/whisper/i],
-    video: [/veo/i],
-  }
-
-  export function classifyMediaModel(modelId: string): MediaType | undefined {
-    for (const [type, patterns] of Object.entries(MEDIA_MODEL_PATTERNS) as [MediaType, RegExp[]][]) {
-      if (patterns.some((p) => p.test(modelId))) return type
+  async function fetchModelsByOutput(output: string): Promise<MediaModel[]> {
+    try {
+      const res = await fetch(`${JUNTO_API_BASE}/models?output=${output}`)
+      if (!res.ok) return []
+      const data = (await res.json()) as { data: Array<{ id: string; owned_by: string; pricing?: Record<string, unknown> }> }
+      return (data.data ?? []).map((m) => ({ id: m.id, owned_by: m.owned_by, pricing: m.pricing }))
+    } catch {
+      return []
     }
-    return undefined
   }
 
   export async function getMediaModels(): Promise<Record<MediaType, MediaModel[]>> {
-    const result: Record<MediaType, MediaModel[]> = { image: [], audio_tts: [], audio_stt: [], video: [] }
-    try {
-      const res = await fetch(`${JUNTO_API_BASE}/models`)
-      if (!res.ok) return result
-      const data = (await res.json()) as { data: Array<{ id: string; owned_by: string; pricing?: Record<string, unknown> }> }
-      for (const m of data.data ?? []) {
-        const type = classifyMediaModel(m.id)
-        if (type) {
-          result[type].push({ id: m.id, owned_by: m.owned_by, pricing: m.pricing })
-        }
-      }
-    } catch (err) {
-      log.warn("Failed to fetch media models", { error: err })
-    }
-    return result
+    const [image, audio, video] = await Promise.all([
+      fetchModelsByOutput("image"),
+      fetchModelsByOutput("audio"),
+      fetchModelsByOutput("video"),
+    ])
+    return { image, audio, video }
   }
 
   // ── Media Default Config ──
 
   export type MediaDefaults = {
     image?: string
-    audio_tts?: string
-    audio_stt?: string
+    audio?: string
     video?: string
   }
 }
