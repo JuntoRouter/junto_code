@@ -23,12 +23,13 @@ type Credits = {
   balanceTwd: number
 }
 
-type DailyUsage = {
+type UsageRecord = {
   date: string
-  totalRequests: number
+  requests: number
+  promptTokens: number
+  completionTokens: number
   totalTokens: number
-  totalCostUsd: number
-  byModel: Array<{ model: string; requests: number; tokens: number; cost: number }>
+  costUsd: number
 }
 
 type TeamMembership = {
@@ -48,7 +49,7 @@ type ApiKeyInfo = {
 type Dashboard = {
   profile?: Profile
   credits?: Credits
-  usage?: DailyUsage
+  usage?: UsageRecord[]
   teams?: TeamMembership[]
   keys?: ApiKeyInfo[]
 }
@@ -80,15 +81,16 @@ async function postJson<T>(url: string, apiKey: string, body: Record<string, unk
 }
 
 async function fetchDashboard(apiKey: string): Promise<Dashboard> {
-  const date = new Date().toISOString().split("T")[0]
-  const [profile, credits, usage, teamsData, keysData] = await Promise.all([
+  const end = new Date().toISOString().split("T")[0]
+  const start = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split("T")[0]
+  const [profile, credits, usageData, teamsData, keysData] = await Promise.all([
     fetchJson<Profile>(`${JUNTO_API_BASE}/me/profile`, apiKey),
     fetchJson<Credits>(`${JUNTO_API_BASE}/me/credits`, apiKey),
-    fetchJson<DailyUsage>(`${JUNTO_API_BASE}/me/usage/daily?date=${date}`, apiKey),
+    fetchJson<{ records: UsageRecord[] }>(`${JUNTO_API_BASE}/me/usage?start=${start}&end=${end}`, apiKey),
     fetchJson<{ teams: TeamMembership[] }>(`${JUNTO_API_BASE}/me/team`, apiKey),
     fetchJson<{ keys: ApiKeyInfo[] }>(`${JUNTO_API_BASE}/me/keys`, apiKey),
   ])
-  return { profile, credits, usage, teams: teamsData?.teams, keys: keysData?.keys }
+  return { profile, credits, usage: usageData?.records, teams: teamsData?.teams, keys: keysData?.keys }
 }
 
 type MediaModel = { id: string; owned_by: string }
@@ -387,42 +389,55 @@ export const DialogJuntoDashboard: Component = () => {
 
               {/* ── Usage ── */}
               <Show when={tab() === "usage"}>
-                <Show when={data().usage} fallback={<p class="text-text-weaker">No usage data for today</p>}>
-                  {(usage) => (
-                    <div class="flex flex-col gap-3">
-                      <h3 class="text-13-medium text-text">Today ({usage().date})</h3>
-                      <div class="flex gap-4 text-13-regular">
-                        <div class="flex gap-1">
-                          <span class="text-text-weaker">Requests:</span>
-                          <span class="text-text">{usage().totalRequests}</span>
+                <Show
+                  when={data().usage && data().usage!.length > 0}
+                  fallback={<p class="text-text-weaker">No usage data in the last 30 days</p>}
+                >
+                  {(() => {
+                    const records = () => data().usage ?? []
+                    const totalRequests = () => records().reduce((s, r) => s + r.requests, 0)
+                    const totalTokens = () => records().reduce((s, r) => s + r.totalTokens, 0)
+                    const totalCost = () => records().reduce((s, r) => s + r.costUsd, 0)
+                    return (
+                      <div class="flex flex-col gap-3">
+                        {/* Summary */}
+                        <div class="flex gap-4 text-13-regular">
+                          <div class="flex flex-col items-center gap-0.5 flex-1 py-2 rounded bg-surface-inset">
+                            <span class="text-text-weaker text-11-regular">Requests</span>
+                            <span class="text-text font-medium">{totalRequests().toLocaleString()}</span>
+                          </div>
+                          <div class="flex flex-col items-center gap-0.5 flex-1 py-2 rounded bg-surface-inset">
+                            <span class="text-text-weaker text-11-regular">Tokens</span>
+                            <span class="text-text font-medium">{totalTokens().toLocaleString()}</span>
+                          </div>
+                          <div class="flex flex-col items-center gap-0.5 flex-1 py-2 rounded bg-surface-inset">
+                            <span class="text-text-weaker text-11-regular">Cost</span>
+                            <span class="text-text font-medium">${totalCost().toFixed(4)}</span>
+                          </div>
                         </div>
-                        <div class="flex gap-1">
-                          <span class="text-text-weaker">Tokens:</span>
-                          <span class="text-text">{usage().totalTokens.toLocaleString()}</span>
-                        </div>
-                        <div class="flex gap-1">
-                          <span class="text-text-weaker">Cost:</span>
-                          <span class="text-text">{formatCost(usage().totalCostUsd)}</span>
-                        </div>
-                      </div>
-                      <Show when={usage().byModel.length > 0}>
-                        <div class="flex flex-col gap-1">
-                          <h4 class="text-13-medium text-text">By Model</h4>
-                          <For each={usage().byModel}>
-                            {(m) => (
-                              <div class="flex items-center gap-2 text-13-regular pl-2">
-                                <span class="text-brand">•</span>
-                                <span class="text-text font-medium">{m.model}</span>
-                                <span class="text-text-weaker">
-                                  {m.requests} req · {m.tokens.toLocaleString()} tok · {formatCost(m.cost)}
-                                </span>
+
+                        {/* Daily table */}
+                        <div class="flex flex-col gap-0.5">
+                          <div class="flex text-11-regular text-text-weaker py-1 border-b border-border">
+                            <span class="flex-1">Date</span>
+                            <span class="w-16 text-right">Requests</span>
+                            <span class="w-20 text-right">Tokens</span>
+                            <span class="w-20 text-right">Cost</span>
+                          </div>
+                          <For each={records()}>
+                            {(r) => (
+                              <div class="flex text-12-regular py-1">
+                                <span class="flex-1 text-text">{r.date}</span>
+                                <span class="w-16 text-right text-text-weaker">{r.requests}</span>
+                                <span class="w-20 text-right text-text-weaker">{r.totalTokens.toLocaleString()}</span>
+                                <span class="w-20 text-right text-text-weaker">${r.costUsd.toFixed(4)}</span>
                               </div>
                             )}
                           </For>
                         </div>
-                      </Show>
-                    </div>
-                  )}
+                      </div>
+                    )
+                  })()}
                 </Show>
               </Show>
 
