@@ -135,7 +135,7 @@ export async function JuntoAuthPlugin(_input: PluginInput): Promise<Hooks> {
               const token = url.searchParams.get("token")
               if (token) {
                 res.writeHead(200, { "Content-Type": "text/html" })
-                res.end("<html><body><h2>Login successful!</h2><p>You can close this tab and return to OpenCode.</p></body></html>")
+                res.end("<html><body><h2>Login successful!</h2><p>You can close this tab and return to JuntoCode.</p></body></html>")
                 resolveToken!(token)
               } else {
                 res.writeHead(400)
