@@ -2,7 +2,7 @@ import { Log } from "../../util/log"
 
 const log = Log.create({ service: "junto.api" })
 
-const JUNTO_API_BASE = "https://us-central1-ms-junto.cloudfunctions.net/juntoRouter/api/v1"
+const JUNTO_API_BASE = "https://juntorouter-api.moonshine-studio.net/api/v1"
 
 export namespace JuntoApi {
   export type Profile = {

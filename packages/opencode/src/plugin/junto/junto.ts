@@ -7,7 +7,7 @@ import { junto_generate_image, junto_generate_audio, junto_generate_video } from
 
 const log = Log.create({ service: "plugin.junto" })
 
-const JUNTO_API_BASE = "https://us-central1-ms-junto.cloudfunctions.net/juntoRouter/api/v1"
+const JUNTO_API_BASE = "https://juntorouter-api.moonshine-studio.net/api/v1"
 const JUNTO_AUTH_URL = process.env.JUNTO_AUTH_URL ?? "https://juntorouter.moonshine-studio.net/auth/opencode"
 
 async function findFreePort(): Promise<number> {
