@@ -1,5 +1,4 @@
 import { Component, createMemo, createResource, createSignal, For, Show } from "solid-js"
-import { useSDK } from "@/context/sdk"
 import { useGlobalSDK } from "@/context/global-sdk"
 import { useDialog } from "@opencode-ai/ui/context/dialog"
 import { Dialog } from "@opencode-ai/ui/dialog"
@@ -12,6 +11,7 @@ const JUNTO_API_BASE = "https://us-central1-ms-junto.cloudfunctions.net/juntoRou
 type Profile = {
   uid: string
   email: string
+  photoURL?: string | null
   tier: string
   limits: { rpm: number | null; tpm: number | null; rpd: number | null }
 }
@@ -93,12 +93,11 @@ async function fetchDashboard(apiKey: string): Promise<Dashboard> {
 type Tab = "overview" | "usage" | "keys"
 
 export const DialogJuntoDashboard: Component = () => {
-  const sdk = useSDK()
   const globalSDK = useGlobalSDK()
   const dialog = useDialog()
 
   const [apiKey, { refetch: refetchKey }] = createResource(async () => {
-    const res = await sdk.client.config.providers()
+    const res = await globalSDK.client.config.providers()
     const providers = res.data?.providers ?? []
     const junto = providers.find((p) => p.id === "junto")
     return junto?.key

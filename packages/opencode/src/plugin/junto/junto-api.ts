@@ -8,6 +8,7 @@ export namespace JuntoApi {
   export type Profile = {
     uid: string
     email: string
+    photoURL?: string | null
     tier: string
     limits: {
       rpm: number | null

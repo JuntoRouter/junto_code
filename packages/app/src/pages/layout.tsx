@@ -87,6 +87,7 @@ import {
 } from "./layout/sidebar-workspace"
 import { ProjectDragOverlay, SortableProject, type ProjectSidebarContext } from "./layout/sidebar-project"
 import { SidebarContent } from "./layout/sidebar-shell"
+import { Avatar } from "@opencode-ai/ui/avatar"
 
 export default function Layout(props: ParentProps) {
   const [store, setStore, , ready] = persisted(
@@ -2341,6 +2342,64 @@ export default function Layout(props: ParentProps) {
     )
   }
 
+  // ── Junto Account Button ──
+  const juntoConnected = createMemo(() => providers.connected().some((p) => p.id === "junto"))
+  const [juntoProfile] = createResource(juntoConnected, async (connected) => {
+    if (!connected) return undefined
+    try {
+      const res = await globalSDK.client.config.providers()
+      const key = (res.data?.providers ?? []).find((p) => p.id === "junto")?.key
+      if (!key) return undefined
+      const profile = await fetch("https://us-central1-ms-junto.cloudfunctions.net/juntoRouter/api/v1/me/profile", {
+        headers: { Authorization: `Bearer ${key}` },
+      })
+      if (!profile.ok) return undefined
+      return (await profile.json()) as { email: string; photoURL?: string | null }
+    } catch {
+      return undefined
+    }
+  })
+  const openJuntoDashboard = () => {
+    void import("@/components/dialog-junto-dashboard").then((x) => {
+      dialog.show(() => <x.DialogJuntoDashboard />)
+    })
+  }
+  const openJuntoConnect = () => {
+    void import("@/components/dialog-connect-provider").then((x) => {
+      dialog.show(() => (
+        <x.DialogConnectProvider
+          provider="junto"
+          onBack={openJuntoDashboard}
+        />
+      ))
+    })
+  }
+  const accountButton = () => {
+    const connected = juntoConnected()
+    const profile = juntoProfile()
+    const email = profile?.email ?? ""
+    const photoURL = profile?.photoURL
+    const tooltipText = connected ? (email || "Junto Dashboard") : "Connect to Junto"
+    const handleClick = connected ? openJuntoDashboard : openJuntoConnect
+    return (
+      <Tooltip placement="right" value={tooltipText}>
+        <button
+          onClick={handleClick}
+          class="size-8 rounded-full overflow-hidden cursor-pointer hover:opacity-80 transition-opacity flex items-center justify-center"
+          style={{ margin: "0 auto" }}
+          aria-label={tooltipText}
+        >
+          <Avatar
+            fallback={connected ? (email || "J") : "?"}
+            src={photoURL ?? undefined}
+            size="small"
+            class="size-full"
+          />
+        </button>
+      </Tooltip>
+    )
+  }
+
   const projects = () => layout.projects.list()
   const projectOverlay = () => <ProjectDragOverlay projects={projects} activeProject={() => store.activeProject} />
   const sidebarContent = (mobile?: boolean) => (
@@ -2359,6 +2418,7 @@ export default function Layout(props: ParentProps) {
       openProjectKeybind={() => command.keybind("project.open")}
       onOpenProject={chooseProject}
       renderProjectOverlay={projectOverlay}
+      accountButton={accountButton()}
       settingsLabel={() => language.t("sidebar.settings")}
       settingsKeybind={() => command.keybind("settings.open")}
       onOpenSettings={openSettings}
