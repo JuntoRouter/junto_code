@@ -2,11 +2,13 @@ import { z } from "zod"
 import { tool, type ToolContext } from "@opencode-ai/plugin"
 import path from "path"
 import fs from "fs/promises"
+import type { JuntoApi } from "./junto-api"
 
 const JUNTO_API_BASE = "https://us-central1-ms-junto.cloudfunctions.net/juntoRouter/api/v1"
 
+const MEDIA_DEFAULTS_KEY = "junto-media-defaults"
+
 async function getApiKey(ctx: ToolContext): Promise<string | undefined> {
-  // Read the auth file to get the junto API key
   const xdgData = process.env.XDG_DATA_HOME || path.join(process.env.HOME || "", ".local/share")
   const authFile = path.join(xdgData, "opencode", "auth.json")
   try {
@@ -14,6 +16,16 @@ async function getApiKey(ctx: ToolContext): Promise<string | undefined> {
     if (data.junto?.type === "api" && data.junto?.key) return data.junto.key
   } catch {}
   return undefined
+}
+
+async function getMediaDefaults(): Promise<JuntoApi.MediaDefaults> {
+  const xdgData = process.env.XDG_DATA_HOME || path.join(process.env.HOME || "", ".local/share")
+  const file = path.join(xdgData, "opencode", `storage-${MEDIA_DEFAULTS_KEY}.json`)
+  try {
+    return JSON.parse(await fs.readFile(file, "utf-8"))
+  } catch {
+    return {}
+  }
 }
 
 async function mediaFetch(
@@ -43,15 +55,14 @@ async function saveBase64(dir: string, filename: string, base64: string): Promis
 export const junto_generate_image = tool({
   description:
     "Generate an image using Junto Router's image generation API. " +
-    "Supports models like openai/gpt-image-1, openai/dall-e-3, google/gemini-2.0-flash. " +
-    "The generated image is saved to the workspace directory.",
+    "The generated image is saved to the workspace directory. " +
+    "Do not specify a model unless the user explicitly requests one.",
   args: {
     prompt: z.string().describe("Description of the image to generate"),
     model: z
       .string()
       .optional()
-      .default("openai/gpt-image-1")
-      .describe("Model to use (e.g. openai/gpt-image-1, openai/dall-e-3, google/gemini-2.0-flash)"),
+      .describe("Override the image model. Omit to use the user's configured default model."),
     size: z
       .string()
       .optional()
@@ -66,17 +77,20 @@ export const junto_generate_image = tool({
     const apiKey = await getApiKey(ctx)
     if (!apiKey) return "Error: Not connected to Junto Router. Please login first via the Junto Dashboard."
 
+    const defaults = await getMediaDefaults()
+    const model = args.model || defaults.image || "openai/gpt-image-1"
+
     await ctx.ask({
       permission: "media",
       patterns: [`generate image: ${args.prompt.slice(0, 80)}`],
       always: ["junto_generate_image"],
-      metadata: { model: args.model, prompt: args.prompt },
+      metadata: { model, prompt: args.prompt },
     })
 
     ctx.metadata({ title: `Generating image: ${args.prompt.slice(0, 50)}...` })
 
     const res = await mediaFetch("/images/generations", apiKey, {
-      model: args.model,
+      model,
       prompt: args.prompt,
       size: args.size,
       n: 1,
@@ -122,15 +136,14 @@ export const junto_generate_image = tool({
 export const junto_generate_audio = tool({
   description:
     "Generate speech audio from text using Junto Router's TTS API. " +
-    "Supports models like openai/tts-1, google/gemini-2.0-flash. " +
-    "The generated audio is saved to the workspace directory.",
+    "The generated audio is saved to the workspace directory. " +
+    "Do not specify a model unless the user explicitly requests one.",
   args: {
     input: z.string().describe("Text to convert to speech"),
     model: z
       .string()
       .optional()
-      .default("openai/tts-1")
-      .describe("Model to use (e.g. openai/tts-1, google/gemini-2.0-flash)"),
+      .describe("Override the TTS model. Omit to use the user's configured default model."),
     voice: z
       .string()
       .optional()
@@ -145,17 +158,20 @@ export const junto_generate_audio = tool({
     const apiKey = await getApiKey(ctx)
     if (!apiKey) return "Error: Not connected to Junto Router. Please login first via the Junto Dashboard."
 
+    const defaults = await getMediaDefaults()
+    const model = args.model || defaults.audio_tts || "openai/tts-1"
+
     await ctx.ask({
       permission: "media",
       patterns: [`generate audio: ${args.input.slice(0, 80)}`],
       always: ["junto_generate_audio"],
-      metadata: { model: args.model, input: args.input.slice(0, 100) },
+      metadata: { model, input: args.input.slice(0, 100) },
     })
 
     ctx.metadata({ title: `Generating audio: ${args.input.slice(0, 50)}...` })
 
     const res = await mediaFetch("/audio/speech", apiKey, {
-      model: args.model,
+      model,
       input: args.input,
       voice: args.voice,
       response_format: "mp3",
@@ -177,7 +193,7 @@ export const junto_generate_audio = tool({
       const buf = Buffer.from(await res.arrayBuffer())
       await fs.writeFile(filepath, buf)
       const relPath = path.relative(ctx.worktree, filepath)
-      return `Audio generated and saved to ${relPath} (model: ${args.model})`
+      return `Audio generated and saved to ${relPath} (model: ${model})`
     }
 
     // JSON response with b64_json
@@ -201,15 +217,14 @@ export const junto_generate_audio = tool({
 export const junto_generate_video = tool({
   description:
     "Generate a video using Junto Router's video generation API. " +
-    "Supports models like google/gemini-2.0-flash. " +
-    "Video generation may take 1-5 minutes. The generated video is saved to the workspace directory.",
+    "Video generation may take 1-5 minutes. The generated video is saved to the workspace directory. " +
+    "Do not specify a model unless the user explicitly requests one.",
   args: {
     prompt: z.string().describe("Description of the video to generate"),
     model: z
       .string()
       .optional()
-      .default("google/gemini-2.0-flash")
-      .describe("Model to use (e.g. google/gemini-2.0-flash)"),
+      .describe("Override the video model. Omit to use the user's configured default model."),
     duration: z
       .number()
       .optional()
@@ -224,17 +239,20 @@ export const junto_generate_video = tool({
     const apiKey = await getApiKey(ctx)
     if (!apiKey) return "Error: Not connected to Junto Router. Please login first via the Junto Dashboard."
 
+    const defaults = await getMediaDefaults()
+    const model = args.model || defaults.video || "google/veo-3.1-fast-generate-preview"
+
     await ctx.ask({
       permission: "media",
       patterns: [`generate video: ${args.prompt.slice(0, 80)}`],
       always: ["junto_generate_video"],
-      metadata: { model: args.model, prompt: args.prompt, duration: args.duration },
+      metadata: { model, prompt: args.prompt, duration: args.duration },
     })
 
     ctx.metadata({ title: `Generating video: ${args.prompt.slice(0, 50)}... (may take a few minutes)` })
 
     const res = await mediaFetch("/video/generations", apiKey, {
-      model: args.model,
+      model,
       prompt: args.prompt,
       duration: args.duration,
     })

@@ -1,5 +1,6 @@
 import { Component, createMemo, createResource, createSignal, For, Show } from "solid-js"
 import { useGlobalSDK } from "@/context/global-sdk"
+import { useServer } from "@/context/server"
 import { useDialog } from "@opencode-ai/ui/context/dialog"
 import { Dialog } from "@opencode-ai/ui/dialog"
 import { Button } from "@opencode-ai/ui/button"
@@ -90,10 +91,65 @@ async function fetchDashboard(apiKey: string): Promise<Dashboard> {
   return { profile, credits, usage, teams: teamsData?.teams, keys: keysData?.keys }
 }
 
-type Tab = "overview" | "usage" | "keys"
+type MediaModel = { id: string; owned_by: string }
+type MediaType = "image" | "audio_tts" | "audio_stt" | "video"
+
+const MEDIA_MODEL_PATTERNS: Record<MediaType, RegExp[]> = {
+  image: [/dall-e/i, /gpt-image/i, /flux/i, /gemini.*image/i, /stable-diffusion/i],
+  audio_tts: [/tts/i, /gemini.*tts/i],
+  audio_stt: [/whisper/i],
+  video: [/veo/i],
+}
+
+function classifyMediaModel(modelId: string): MediaType | undefined {
+  for (const [type, patterns] of Object.entries(MEDIA_MODEL_PATTERNS) as [MediaType, RegExp[]][]) {
+    if (patterns.some((p) => p.test(modelId))) return type
+  }
+  return undefined
+}
+
+async function fetchMediaModels(): Promise<Record<MediaType, MediaModel[]>> {
+  const result: Record<MediaType, MediaModel[]> = { image: [], audio_tts: [], audio_stt: [], video: [] }
+  try {
+    const res = await fetch(`${JUNTO_API_BASE}/models`)
+    if (!res.ok) return result
+    const data = (await res.json()) as { data: Array<{ id: string; owned_by: string }> }
+    for (const m of data.data ?? []) {
+      const type = classifyMediaModel(m.id)
+      if (type) result[type].push({ id: m.id, owned_by: m.owned_by })
+    }
+  } catch {}
+  return result
+}
+
+type MediaDefaults = { image?: string; audio_tts?: string; audio_stt?: string; video?: string }
+const MEDIA_DEFAULTS_KEY = "junto-media-defaults"
+
+function loadMediaDefaults(): MediaDefaults {
+  try { return JSON.parse(localStorage.getItem(MEDIA_DEFAULTS_KEY) || "{}") } catch { return {} }
+}
+
+function persistMediaDefaults(defaults: MediaDefaults, server?: { url: string; username?: string; password?: string }) {
+  localStorage.setItem(MEDIA_DEFAULTS_KEY, JSON.stringify(defaults))
+  // Sync to sidecar filesystem so CLI tools can read it
+  if (server?.url) {
+    const headers: Record<string, string> = { "Content-Type": "application/json" }
+    if (server.password) {
+      headers["Authorization"] = `Basic ${btoa(`${server.username ?? "opencode"}:${server.password}`)}`
+    }
+    void fetch(`${server.url}/storage/junto-media-defaults`, {
+      method: "PUT",
+      headers,
+      body: JSON.stringify(defaults),
+    }).catch(() => {})
+  }
+}
+
+type Tab = "overview" | "usage" | "keys" | "models"
 
 export const DialogJuntoDashboard: Component = () => {
   const globalSDK = useGlobalSDK()
+  const server = useServer()
   const dialog = useDialog()
 
   const [apiKey, { refetch: refetchKey }] = createResource(async () => {
@@ -113,6 +169,15 @@ export const DialogJuntoDashboard: Component = () => {
 
   const [tab, setTab] = createSignal<Tab>("overview")
   const [busy, setBusy] = createSignal(false)
+  const [mediaModels] = createResource(async () => fetchMediaModels())
+  const [mediaDefaults, setMediaDefaults] = createSignal<MediaDefaults>(loadMediaDefaults())
+
+  const updateMediaDefault = (type: MediaType, modelId: string) => {
+    const next = { ...mediaDefaults(), [type]: modelId }
+    setMediaDefaults(next)
+    persistMediaDefaults(next, server.current?.http)
+    showToast({ variant: "success", title: `Default ${type} model updated` })
+  }
 
   const formatPoints = (mp: number) => {
     if (mp >= 1_000_000) return `${(mp / 1_000_000).toFixed(1)}M`
@@ -245,6 +310,7 @@ export const DialogJuntoDashboard: Component = () => {
                 <TabButton id="overview" label="Overview" />
                 <TabButton id="usage" label="Usage" />
                 <TabButton id="keys" label="API Keys" />
+                <TabButton id="models" label="Models" />
               </div>
 
               {/* ── Overview ── */}
@@ -446,6 +512,69 @@ export const DialogJuntoDashboard: Component = () => {
                     </Show>
                   </div>
                 </div>
+              </Show>
+
+              {/* ── Models ── */}
+              <Show when={tab() === "models"}>
+                <Show when={mediaModels.loading}>
+                  <div class="flex items-center gap-2">
+                    <Spinner />
+                    <p class="text-text-weaker">Loading models...</p>
+                  </div>
+                </Show>
+                <Show when={mediaModels()}>
+                  {(models) => {
+                    const sections: { type: MediaType; label: string; fallback: string }[] = [
+                      { type: "image", label: "Image Generation", fallback: "openai/gpt-image-1" },
+                      { type: "audio_tts", label: "Text-to-Speech", fallback: "openai/tts-1" },
+                      { type: "video", label: "Video Generation", fallback: "google/veo-3.1-fast-generate-preview" },
+                      { type: "audio_stt", label: "Speech-to-Text", fallback: "openai/whisper-1" },
+                    ]
+                    return (
+                      <div class="flex flex-col gap-4">
+                        <p class="text-11-regular text-text-weaker">
+                          Set default models for media generation tools. Agent will use these when no model is specified.
+                        </p>
+                        <For each={sections}>
+                          {(section) => {
+                            const available = () => models()[section.type] ?? []
+                            const current = () => mediaDefaults()[section.type] || section.fallback
+                            return (
+                              <Show when={available().length > 0}>
+                                <div class="flex flex-col gap-1">
+                                  <h3 class="text-13-medium text-text">{section.label}</h3>
+                                  <div class="flex flex-col gap-0.5">
+                                    <For each={available()}>
+                                      {(m) => {
+                                        const active = () => current() === m.id
+                                        return (
+                                          <button
+                                            class={`flex items-center justify-between py-1.5 px-2 rounded text-left ${active() ? "bg-surface-inset" : "hover:bg-surface-inset/50"}`}
+                                            onClick={() => updateMediaDefault(section.type, m.id)}
+                                          >
+                                            <div class="flex items-center gap-2 text-13-regular">
+                                              <span class="text-text">{m.id}</span>
+                                              <Show when={active()}>
+                                                <span class="text-10-regular text-fill-positive font-medium px-1 py-0.5 rounded bg-surface-positive/10">
+                                                  default
+                                                </span>
+                                              </Show>
+                                            </div>
+                                            <span class="text-11-regular text-text-weaker">{m.owned_by}</span>
+                                          </button>
+                                        )
+                                      }}
+                                    </For>
+                                  </div>
+                                </div>
+                              </Show>
+                            )
+                          }}
+                        </For>
+                      </div>
+                    )
+                  }}
+                </Show>
               </Show>
             </>
           )}

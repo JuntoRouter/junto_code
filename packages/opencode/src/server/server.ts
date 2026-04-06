@@ -6,6 +6,7 @@ import { cors } from "hono/cors"
 import { basicAuth } from "hono/basic-auth"
 import z from "zod"
 import { Auth } from "../auth"
+import { Global } from "../global"
 import { Flag } from "../flag/flag"
 import { ProviderID } from "../provider/schema"
 import { WorkspaceRouterMiddleware } from "./router"
@@ -157,6 +158,33 @@ export namespace Server {
         async (c) => {
           const providerID = c.req.valid("param").providerID
           await Auth.remove(providerID)
+          return c.json(true)
+        },
+      )
+      .get(
+        "/storage/:key",
+        async (c) => {
+          const key = c.req.param("key")
+          const { default: path } = await import("path")
+          const { readFile } = await import("fs/promises")
+          const filepath = path.join(Global.Path.data, `storage-${key}.json`)
+          try {
+            const data = await readFile(filepath, "utf-8")
+            return c.json(JSON.parse(data))
+          } catch {
+            return c.json({})
+          }
+        },
+      )
+      .put(
+        "/storage/:key",
+        async (c) => {
+          const key = c.req.param("key")
+          const { default: path } = await import("path")
+          const { writeFile } = await import("fs/promises")
+          const filepath = path.join(Global.Path.data, `storage-${key}.json`)
+          const body = await c.req.json()
+          await writeFile(filepath, JSON.stringify(body, null, 2))
           return c.json(true)
         },
       )
