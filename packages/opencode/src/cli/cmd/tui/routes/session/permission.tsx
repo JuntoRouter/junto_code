@@ -401,6 +401,30 @@ export function PermissionPrompt(props: { request: PermissionRequest }) {
               }
             }
 
+            if (permission === "media") {
+              const meta = props.request.metadata ?? {}
+              const model = typeof meta["model"] === "string" ? meta["model"] : "unknown"
+              const prompt =
+                typeof meta["prompt"] === "string"
+                  ? meta["prompt"]
+                  : typeof meta["input"] === "string"
+                    ? meta["input"]
+                    : ""
+              const pattern = props.request.patterns?.[0] ?? ""
+              return {
+                icon: "◆",
+                title: pattern,
+                body: (
+                  <box paddingLeft={1} gap={1} flexDirection="column">
+                    <text fg={theme.textMuted}>{"Model: " + model}</text>
+                    <Show when={prompt}>
+                      <text fg={theme.text}>{prompt}</text>
+                    </Show>
+                  </box>
+                ),
+              }
+            }
+
             return {
               icon: "⚙",
               title: `Call tool ${permission}`,

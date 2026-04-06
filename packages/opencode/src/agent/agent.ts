@@ -86,6 +86,7 @@ export namespace Agent {
           const defaults = Permission.fromConfig({
             "*": "allow",
             doom_loop: "ask",
+            media: "ask",
             external_directory: {
               "*": "ask",
               ...Object.fromEntries(whitelistedDirs.map((dir) => [dir, "allow"])),
