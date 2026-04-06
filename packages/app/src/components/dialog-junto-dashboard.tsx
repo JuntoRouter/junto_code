@@ -235,7 +235,7 @@ export const DialogJuntoDashboard: Component = () => {
     await globalSDK.client.auth.remove({ providerID: "junto" })
     await globalSDK.client.global.dispose()
     dialog.close()
-    showToast({ variant: "success", title: "Disconnected from Junto" })
+    showToast({ variant: "success", title: "Disconnected from JuntoRouter" })
   }
 
   const switchToKey = async (keyValue: string, label: string) => {
@@ -289,12 +289,12 @@ export const DialogJuntoDashboard: Component = () => {
   }
 
   return (
-    <Dialog title="Junto Dashboard">
+    <Dialog title="JuntoRouter Dashboard">
       <div class="flex flex-col gap-4 p-4 min-w-[420px] max-h-[70vh] overflow-y-auto">
         {/* Not connected */}
         <Show when={!apiKey.loading && !apiKey()}>
           <div class="flex flex-col gap-3 items-center py-8">
-            <p class="text-14-regular text-text-weaker">Connect to Junto Router to get started.</p>
+            <p class="text-14-regular text-text-weaker">Connect to JuntoRouter to get started.</p>
             <Button variant="primary" size="large" onClick={handleConnect}>
               Login with Google
             </Button>

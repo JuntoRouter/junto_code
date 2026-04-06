@@ -2380,7 +2380,7 @@ export default function Layout(props: ParentProps) {
     const profile = juntoProfile()
     const email = profile?.email ?? ""
     const photoURL = profile?.photoURL
-    const tooltipText = connected ? (email || "Junto Dashboard") : "Connect to Junto"
+    const tooltipText = connected ? (email || "JuntoRouter Dashboard") : "Connect to JuntoRouter"
     const handleClick = connected ? openJuntoDashboard : openJuntoConnect
     return (
       <Tooltip placement="right" value={tooltipText}>

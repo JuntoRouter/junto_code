@@ -122,7 +122,7 @@ export async function JuntoAuthPlugin(_input: PluginInput): Promise<Hooks> {
       methods: [
         {
           type: "oauth" as const,
-          label: "Login with Junto",
+          label: "Login with JuntoRouter",
           async authorize() {
             const port = await findFreePort()
             let resolveToken: (token: string) => void

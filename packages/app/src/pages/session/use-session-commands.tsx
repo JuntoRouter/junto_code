@@ -569,7 +569,7 @@ export const useSessionCommands = (actions: SessionCommandContext) => {
   const juntoCmds = () => [
     juntoCommand({
       id: "junto.dashboard",
-      title: "Junto Dashboard",
+      title: "JuntoRouter Dashboard",
       description: "View credit balance, team info, and usage statistics",
       keybind: "mod+j",
       slash: "junto",

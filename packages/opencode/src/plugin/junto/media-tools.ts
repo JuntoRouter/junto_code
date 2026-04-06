@@ -75,7 +75,7 @@ export const junto_generate_image = tool({
   },
   async execute(args, ctx) {
     const apiKey = await getApiKey(ctx)
-    if (!apiKey) return "Error: Not connected to Junto Router. Please login first via the Junto Dashboard."
+    if (!apiKey) return "Error: Not connected to JuntoRouter. Please login first via the JuntoRouter Dashboard."
 
     const defaults = await getMediaDefaults()
     const model = args.model || defaults.image || "openai/gpt-image-1"
@@ -156,7 +156,7 @@ export const junto_generate_audio = tool({
   },
   async execute(args, ctx) {
     const apiKey = await getApiKey(ctx)
-    if (!apiKey) return "Error: Not connected to Junto Router. Please login first via the Junto Dashboard."
+    if (!apiKey) return "Error: Not connected to JuntoRouter. Please login first via the JuntoRouter Dashboard."
 
     const defaults = await getMediaDefaults()
     const model = args.model || defaults.audio || "openai/tts-1"
@@ -237,7 +237,7 @@ export const junto_generate_video = tool({
   },
   async execute(args, ctx) {
     const apiKey = await getApiKey(ctx)
-    if (!apiKey) return "Error: Not connected to Junto Router. Please login first via the Junto Dashboard."
+    if (!apiKey) return "Error: Not connected to JuntoRouter. Please login first via the JuntoRouter Dashboard."
 
     const defaults = await getMediaDefaults()
     const model = args.model || defaults.video || "google/veo-3.1-fast-generate-preview"

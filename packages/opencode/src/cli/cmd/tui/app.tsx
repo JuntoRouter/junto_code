@@ -643,7 +643,7 @@ function App(props: { onSnapshot?: () => Promise<string[]> }) {
       category: "System",
     },
     {
-      title: "Junto Dashboard",
+      title: "JuntoRouter Dashboard",
       keybind: "junto_dashboard",
       value: "junto.dashboard",
       slash: {
