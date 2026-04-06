@@ -3,6 +3,7 @@ import type { Model } from "@opencode-ai/sdk/v2"
 import { Log } from "../../util/log"
 import { createServer } from "node:http"
 import { URL } from "node:url"
+import { junto_generate_image, junto_generate_audio, junto_generate_video } from "./media-tools"
 
 const log = Log.create({ service: "plugin.junto" })
 
@@ -96,6 +97,11 @@ async function ensureApiKey(token: string, teamId?: string): Promise<string> {
 
 export async function JuntoAuthPlugin(_input: PluginInput): Promise<Hooks> {
   return {
+    tool: {
+      junto_generate_image,
+      junto_generate_audio,
+      junto_generate_video,
+    },
     provider: {
       id: "junto",
       async models(provider, ctx) {
