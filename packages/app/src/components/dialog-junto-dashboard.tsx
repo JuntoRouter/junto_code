@@ -166,13 +166,8 @@ export const DialogJuntoDashboard: Component = () => {
     const data = dashboard()
     const http = server.current?.http
     if (!data?.profile || !http) return
-    const headers: Record<string, string> = { "Content-Type": "application/json" }
-    if (http.password) headers["Authorization"] = `Basic ${btoa(`${http.username ?? "opencode"}:${http.password}`)}`
-    void fetch(`${http.url}/storage/junto-profile`, {
-      method: "PUT",
-      headers,
-      body: JSON.stringify({ email: data.profile.email, photoURL: data.profile.photoURL }),
-    }).catch(() => {})
+    // Cache profile to localStorage so sidebar avatar can read it instantly
+    localStorage.setItem("junto-profile", JSON.stringify({ email: data.profile.email, photoURL: data.profile.photoURL }))
   })
 
   const [tab, setTab] = createSignal<Tab>("overview")
@@ -236,6 +231,7 @@ export const DialogJuntoDashboard: Component = () => {
   const handleDisconnect = async () => {
     await globalSDK.client.auth.remove({ providerID: "junto" })
     await globalSDK.client.global.dispose()
+    localStorage.removeItem("junto-profile")
     dialog.close()
     showToast({ variant: "success", title: "Disconnected from JuntoRouter" })
   }

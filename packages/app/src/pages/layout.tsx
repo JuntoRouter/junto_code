@@ -2347,19 +2347,32 @@ export default function Layout(props: ParentProps) {
   const juntoConnected = createMemo(() => globalSync.data.provider.connected.includes("junto"))
   const [juntoProfile, setJuntoProfile] = createSignal<{ email: string; photoURL?: string | null } | undefined>()
   createEffect(() => {
+    // Re-read profile from localStorage whenever provider connected list changes
     const connected = globalSync.data.provider.connected
-    const http = server.current?.http
-    if (!connected.includes("junto") || !http?.url) {
+    if (!connected.includes("junto")) {
       setJuntoProfile(undefined)
       return
     }
-    const headers: Record<string, string> = {}
-    if (http.password) headers["Authorization"] = `Basic ${btoa(`${http.username ?? "opencode"}:${http.password}`)}`
-    fetch(`${http.url}/storage/junto-profile`, { headers })
-      .then((res) => res.ok ? res.json() : null)
-      .then((data) => { if (data?.email) setJuntoProfile(data) })
-      .catch(() => {})
+    try {
+      const cached = localStorage.getItem("junto-profile")
+      if (cached) {
+        const data = JSON.parse(cached)
+        if (data?.email) setJuntoProfile(data)
+      }
+    } catch { /* ignore */ }
   })
+  // Also poll localStorage periodically to pick up changes from dashboard dialog
+  const profileInterval = setInterval(() => {
+    if (!juntoConnected()) return
+    try {
+      const cached = localStorage.getItem("junto-profile")
+      if (cached) {
+        const data = JSON.parse(cached)
+        if (data?.email && data.email !== juntoProfile()?.email) setJuntoProfile(data)
+      }
+    } catch { /* ignore */ }
+  }, 2000)
+  onCleanup(() => clearInterval(profileInterval))
   const openJuntoDashboard = () => {
     void import("@/components/dialog-junto-dashboard").then((x) => {
       dialog.show(() => <x.DialogJuntoDashboard />)
