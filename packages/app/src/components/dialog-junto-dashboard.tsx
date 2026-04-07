@@ -7,7 +7,7 @@ import { Button } from "@opencode-ai/ui/button"
 import { Spinner } from "@opencode-ai/ui/spinner"
 import { showToast } from "@opencode-ai/ui/toast"
 
-const JUNTO_API_BASE = "https://juntorouter-api.moonshine-studio.net/api/v1"
+const JUNTO_API_BASE = import.meta.env.VITE_JUNTO_API_BASE ?? "https://juntorouter-api.moonshine-studio.net/api/v1"
 
 type Profile = {
   uid: string

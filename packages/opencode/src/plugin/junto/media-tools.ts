@@ -4,7 +4,7 @@ import path from "path"
 import fs from "fs/promises"
 import type { JuntoApi } from "./junto-api"
 
-const JUNTO_API_BASE = "https://juntorouter-api.moonshine-studio.net/api/v1"
+import { JUNTO_API_BASE } from "./constants"
 
 const MEDIA_DEFAULTS_KEY = "junto-media-defaults"
 

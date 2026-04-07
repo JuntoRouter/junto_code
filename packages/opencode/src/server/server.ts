@@ -165,9 +165,11 @@ export namespace Server {
         "/storage/:key",
         async (c) => {
           const key = c.req.param("key")
+          if (!/^[a-zA-Z0-9_-]+$/.test(key)) return c.json({ error: "Invalid key" }, 400)
           const { default: path } = await import("path")
           const { readFile } = await import("fs/promises")
           const filepath = path.join(Global.Path.data, `storage-${key}.json`)
+          if (!filepath.startsWith(Global.Path.data)) return c.json({ error: "Invalid key" }, 400)
           try {
             const data = await readFile(filepath, "utf-8")
             return c.json(JSON.parse(data))
@@ -180,9 +182,11 @@ export namespace Server {
         "/storage/:key",
         async (c) => {
           const key = c.req.param("key")
+          if (!/^[a-zA-Z0-9_-]+$/.test(key)) return c.json({ error: "Invalid key" }, 400)
           const { default: path } = await import("path")
           const { writeFile } = await import("fs/promises")
           const filepath = path.join(Global.Path.data, `storage-${key}.json`)
+          if (!filepath.startsWith(Global.Path.data)) return c.json({ error: "Invalid key" }, 400)
           const body = await c.req.json()
           await writeFile(filepath, JSON.stringify(body, null, 2))
           return c.json(true)

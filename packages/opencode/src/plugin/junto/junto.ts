@@ -7,8 +7,7 @@ import { junto_generate_image, junto_generate_audio, junto_generate_video } from
 
 const log = Log.create({ service: "plugin.junto" })
 
-const JUNTO_API_BASE = "https://juntorouter-api.moonshine-studio.net/api/v1"
-const JUNTO_AUTH_URL = process.env.JUNTO_AUTH_URL ?? "https://juntorouter.moonshine-studio.net/auth/opencode"
+import { JUNTO_API_BASE, JUNTO_AUTH_URL } from "./constants"
 
 async function findFreePort(): Promise<number> {
   return new Promise((resolve, reject) => {
@@ -126,12 +125,20 @@ export async function JuntoAuthPlugin(_input: PluginInput): Promise<Hooks> {
           async authorize() {
             const port = await findFreePort()
             let resolveToken: (token: string) => void
-            const tokenPromise = new Promise<string>((resolve) => {
+            let rejectToken: (err: Error) => void
+            const tokenPromise = new Promise<string>((resolve, reject) => {
               resolveToken = resolve
+              rejectToken = reject
             })
 
             const httpServer = createServer((req, res) => {
               const url = new URL(req.url ?? "/", `http://localhost:${port}`)
+              // Only accept tokens on the /callback path
+              if (url.pathname !== "/callback") {
+                res.writeHead(404)
+                res.end("Not found")
+                return
+              }
               const token = url.searchParams.get("token")
               if (token) {
                 res.writeHead(200, { "Content-Type": "text/html" })
@@ -145,6 +152,12 @@ export async function JuntoAuthPlugin(_input: PluginInput): Promise<Hooks> {
 
             httpServer.listen(port)
 
+            // Timeout: close server after 5 minutes if no callback received
+            const timeout = setTimeout(() => {
+              httpServer.close()
+              rejectToken!(new Error("OAuth login timed out after 5 minutes"))
+            }, 5 * 60 * 1000)
+
             const callbackUrl = `http://localhost:${port}/callback`
             const authUrl = `${JUNTO_AUTH_URL}?callback=${encodeURIComponent(callbackUrl)}`
 
@@ -155,6 +168,7 @@ export async function JuntoAuthPlugin(_input: PluginInput): Promise<Hooks> {
               async callback() {
                 try {
                   const token = await tokenPromise
+                  clearTimeout(timeout)
                   httpServer.close()
 
                   log.info("Token received, creating personal API key...")
@@ -163,6 +177,7 @@ export async function JuntoAuthPlugin(_input: PluginInput): Promise<Hooks> {
 
                   return { type: "success" as const, key: apiKey }
                 } catch (err) {
+                  clearTimeout(timeout)
                   log.error("Auth callback failed", { error: err })
                   httpServer.close()
                   return { type: "failed" as const }

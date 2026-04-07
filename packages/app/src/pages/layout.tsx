@@ -2346,31 +2346,32 @@ export default function Layout(props: ParentProps) {
   // ── Junto Account Button ──
   const juntoConnected = createMemo(() => globalSync.data.provider.connected.includes("junto"))
   const [juntoProfile, setJuntoProfile] = createSignal<{ email: string; photoURL?: string | null } | undefined>()
+  const readProfileFromStorage = () => {
+    try {
+      const cached = localStorage.getItem("junto-profile")
+      if (cached) {
+        const data = JSON.parse(cached)
+        if (data?.email) return data as { email: string; photoURL?: string | null }
+      }
+    } catch { /* ignore */ }
+    return undefined
+  }
   createEffect(() => {
-    // Re-read profile from localStorage whenever provider connected list changes
     const connected = globalSync.data.provider.connected
     if (!connected.includes("junto")) {
       setJuntoProfile(undefined)
+      // Clear stale profile data when not connected
+      localStorage.removeItem("junto-profile")
       return
     }
-    try {
-      const cached = localStorage.getItem("junto-profile")
-      if (cached) {
-        const data = JSON.parse(cached)
-        if (data?.email) setJuntoProfile(data)
-      }
-    } catch { /* ignore */ }
+    const data = readProfileFromStorage()
+    if (data) setJuntoProfile(data)
   })
-  // Also poll localStorage periodically to pick up changes from dashboard dialog
+  // Poll localStorage to pick up changes from dashboard dialog
   const profileInterval = setInterval(() => {
     if (!juntoConnected()) return
-    try {
-      const cached = localStorage.getItem("junto-profile")
-      if (cached) {
-        const data = JSON.parse(cached)
-        if (data?.email && data.email !== juntoProfile()?.email) setJuntoProfile(data)
-      }
-    } catch { /* ignore */ }
+    const data = readProfileFromStorage()
+    if (data && data.email !== juntoProfile()?.email) setJuntoProfile(data)
   }, 2000)
   onCleanup(() => clearInterval(profileInterval))
   const openJuntoDashboard = () => {
