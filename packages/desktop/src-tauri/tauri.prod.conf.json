@@ -3,7 +3,7 @@
   "productName": "JuntoCode",
   "identifier": "ai.opencode.desktop",
   "bundle": {
-    "createUpdaterArtifacts": false,
+    "createUpdaterArtifacts": true,
     "icon": [
       "icons/prod/32x32.png",
       "icons/prod/128x128.png",
@@ -29,5 +29,10 @@
       }
     }
   },
-  "plugins": {}
+  "plugins": {
+    "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXkgQTAzQ0NFQThEQzg4MDdDNApSV1RFQjRqY3FNNDhvQTNLaENHWjVYMHR1OEpPWERub012ZUwrQm9maVVmMzhOYWViVWFtVjFCdAo=",
+      "endpoints": ["https://github.com/JuntoRouter/junto_code/releases/latest/download/latest.json"]
+    }
+  }
 }
