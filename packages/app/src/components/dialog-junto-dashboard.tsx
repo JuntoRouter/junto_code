@@ -172,7 +172,25 @@ export const DialogJuntoDashboard: Component = () => {
 
   const [tab, setTab] = createSignal<Tab>("overview")
   const [busy, setBusy] = createSignal(false)
-  const [mediaModels] = createResource(async () => fetchMediaModels())
+  const [mediaModels] = createResource(
+    () => apiKey(),
+    async (key) => {
+      const allMedia = await fetchMediaModels()
+      if (!key) return allMedia
+      // Filter by team allowlist
+      try {
+        const teamAllowlist = await fetchJson<{ models: string[] }>(`${JUNTO_API_BASE}/me/team/models`, key)
+        const allowed = teamAllowlist?.models
+        if (allowed && allowed.length > 0) {
+          const allowedSet = new Set(allowed)
+          for (const type of Object.keys(allMedia) as MediaType[]) {
+            allMedia[type] = allMedia[type].filter((m) => allowedSet.has(m.id))
+          }
+        }
+      } catch { /* fallback: show all */ }
+      return allMedia
+    },
+  )
   const [mediaDefaults, setMediaDefaults] = createSignal<MediaDefaults>(loadMediaDefaults())
 
   const updateMediaDefault = (type: MediaType, modelId: string) => {
@@ -446,7 +464,7 @@ export const DialogJuntoDashboard: Component = () => {
                 >
                   <div class="flex flex-col gap-1">
                     <h3 class="text-13-medium text-text">Existing Keys</h3>
-                    <p class="text-11-regular text-text-weaker">Select a key to use, or create a new one below.</p>
+                    <p class="text-11-regular text-text-weaker">Your API keys. Create a new key below to switch billing context.</p>
                     <div class="flex flex-col gap-0.5 mt-1">
                       <For each={sortedKeys()}>
                         {(k) => {
@@ -471,24 +489,6 @@ export const DialogJuntoDashboard: Component = () => {
                                   </Show>
                                 </div>
                               </div>
-                              <Show when={!current()}>
-                                <Button
-                                  variant="secondary"
-                                  size="small"
-                                  disabled={busy()}
-                                  onClick={() => {
-                                    // Can't switch to masked key — need to recreate
-                                    // For now, create a new key with same name/team
-                                    if (k.teamId) {
-                                      createAndSwitch(k.name, k.teamId)
-                                    } else {
-                                      createAndSwitch(k.name)
-                                    }
-                                  }}
-                                >
-                                  Use
-                                </Button>
-                              </Show>
                             </div>
                           )
                         }}

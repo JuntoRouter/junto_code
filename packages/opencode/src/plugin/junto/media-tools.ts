@@ -2,11 +2,24 @@ import { z } from "zod"
 import { tool, type ToolContext } from "@opencode-ai/plugin"
 import path from "path"
 import fs from "fs/promises"
-import type { JuntoApi } from "./junto-api"
+import { JuntoApi } from "./junto-api"
 
 import { JUNTO_API_BASE } from "./constants"
 
 const MEDIA_DEFAULTS_KEY = "junto-media-defaults"
+
+async function checkModelAllowed(apiKey: string, model: string): Promise<string | undefined> {
+  try {
+    const teamModels = await JuntoApi.getTeamModels(apiKey)
+    if (teamModels.length === 0) return undefined // no restrictions
+    if (teamModels.includes(model)) return undefined // allowed
+    const mediaModels = teamModels.filter((m) => /image|dall|flux|gpt-image|tts|whisper|veo/i.test(m))
+    const available = mediaModels.length > 0 ? mediaModels.join(", ") : "none"
+    return `Your team does not allow model "${model}" for media generation. Available media models: ${available}. Contact your team manager to request access.`
+  } catch {
+    return undefined // can't check, allow
+  }
+}
 
 async function getApiKey(ctx: ToolContext): Promise<string | undefined> {
   const xdgData = process.env.XDG_DATA_HOME || path.join(process.env.HOME || "", ".local/share")
@@ -79,6 +92,9 @@ export const junto_generate_image = tool({
 
     const defaults = await getMediaDefaults()
     const model = args.model || defaults.image || "openai/gpt-image-1"
+
+    const denied = await checkModelAllowed(apiKey, model)
+    if (denied) return denied
 
     await ctx.ask({
       permission: "media",
@@ -161,6 +177,9 @@ export const junto_generate_audio = tool({
     const defaults = await getMediaDefaults()
     const model = args.model || defaults.audio || "openai/tts-1"
 
+    const denied = await checkModelAllowed(apiKey, model)
+    if (denied) return denied
+
     await ctx.ask({
       permission: "media",
       patterns: [`generate audio: ${args.input.slice(0, 80)}`],
@@ -241,6 +260,9 @@ export const junto_generate_video = tool({
 
     const defaults = await getMediaDefaults()
     const model = args.model || defaults.video || "google/veo-3.1-fast-generate-preview"
+
+    const denied = await checkModelAllowed(apiKey, model)
+    if (denied) return denied
 
     await ctx.ask({
       permission: "media",
