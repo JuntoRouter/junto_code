@@ -98,6 +98,11 @@ export namespace JuntoApi {
     return data?.teams
   }
 
+  export async function getTeamModels(apiKey: string): Promise<string[]> {
+    const data = await fetchJson<{ models: string[] }>(`${JUNTO_API_BASE}/me/team/models`, apiKey)
+    return data?.models ?? []
+  }
+
   export async function getDashboard(apiKey: string): Promise<Dashboard> {
     const [profile, credits, usage, teams] = await Promise.all([
       getProfile(apiKey),

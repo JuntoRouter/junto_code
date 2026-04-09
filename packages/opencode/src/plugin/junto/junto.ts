@@ -8,6 +8,7 @@ import { junto_generate_image, junto_generate_audio, junto_generate_video } from
 const log = Log.create({ service: "plugin.junto" })
 
 import { JUNTO_API_BASE, JUNTO_AUTH_URL } from "./constants"
+import { JuntoApi } from "./junto-api"
 
 async function findFreePort(): Promise<number> {
   return new Promise((resolve, reject) => {
@@ -67,6 +68,22 @@ async function fetchModels(apiKey?: string): Promise<Record<string, Model>> {
         release_date: "",
       }
     }
+    // Filter by team allowlist if available
+    if (apiKey) {
+      try {
+        const teamModels = await JuntoApi.getTeamModels(apiKey)
+        if (teamModels.length > 0) {
+          const allowed = new Set(teamModels)
+          for (const id of Object.keys(models)) {
+            if (!allowed.has(id)) delete models[id]
+          }
+          log.info("Filtered models by team allowlist", { total: Object.keys(models).length, allowed: teamModels.length })
+        }
+      } catch {
+        // Allowlist fetch failed — show all models
+      }
+    }
+
     return models
   } catch (err) {
     log.error("Failed to fetch junto models", { error: err })
