@@ -132,7 +132,18 @@ export function DialogModel(props: { providerID?: string }) {
     props.providerID ? sync.data.provider.find((x) => x.id === props.providerID) : null,
   )
 
-  const title = createMemo(() => provider()?.name ?? "Select model")
+  const juntoProvider = createMemo(() => sync.data.provider.find((x) => x.id === "junto"))
+  const juntoModelCount = createMemo(() => {
+    const p = juntoProvider()
+    if (!p) return 0
+    return Object.keys(p.models).length
+  })
+
+  const title = createMemo(() => {
+    if (provider()) return provider()!.name
+    if (juntoModelCount() > 0) return `Select model · Team: ${juntoModelCount()} models`
+    return "Select model"
+  })
 
   function onSelect(providerID: string, modelID: string) {
     local.model.set({ providerID, modelID }, { recent: true })
