@@ -40,6 +40,7 @@ type TeamMembership = {
 type ApiKeyInfo = {
   id: string
   name: string
+  keyValue: string
   maskedKey: string
   tier: string
   teamId: string | null
@@ -489,6 +490,16 @@ export const DialogJuntoDashboard: Component = () => {
                                   </Show>
                                 </div>
                               </div>
+                              <Show when={!current()}>
+                                <Button
+                                  variant="secondary"
+                                  size="small"
+                                  disabled={busy()}
+                                  onClick={() => switchToKey(k.keyValue, k.name)}
+                                >
+                                  Use
+                                </Button>
+                              </Show>
                             </div>
                           )
                         }}
