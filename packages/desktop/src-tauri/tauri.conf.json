@@ -33,7 +33,7 @@
     ],
     "active": true,
     "targets": ["deb", "rpm", "dmg", "nsis", "app"],
-    "externalBin": ["sidecars/opencode-cli"],
+    "externalBin": ["sidecars/juntocode-cli"],
     "linux": {
       "rpm": {
         "compression": {

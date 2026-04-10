@@ -106,8 +106,8 @@ jobs:
           mkdir -p packages/desktop/src-tauri/sidecars
           BINARY=$(find packages/opencode/dist -name "opencode" -type f | head -1)
           echo "Found binary: $BINARY"
-          cp "$BINARY" packages/desktop/src-tauri/sidecars/opencode-cli-${{ matrix.target }}
-          chmod +x packages/desktop/src-tauri/sidecars/opencode-cli-${{ matrix.target }}
+          cp "$BINARY" packages/desktop/src-tauri/sidecars/juntocode-cli-${{ matrix.target }}
+          chmod +x packages/desktop/src-tauri/sidecars/juntocode-cli-${{ matrix.target }}
 
       - name: Find and copy sidecar binary (Windows)
         if: runner.os == 'Windows'
@@ -116,7 +116,7 @@ jobs:
           New-Item -ItemType Directory -Force -Path packages/desktop/src-tauri/sidecars
           $binary = Get-ChildItem -Path packages/opencode/dist -Recurse -Filter "opencode.exe" | Select-Object -First 1
           Write-Host "Found binary: $($binary.FullName)"
-          Copy-Item $binary.FullName "packages/desktop/src-tauri/sidecars/opencode-cli-${{ matrix.target }}.exe"
+          Copy-Item $binary.FullName "packages/desktop/src-tauri/sidecars/juntocode-cli-${{ matrix.target }}.exe"
 
       - name: Build Tauri desktop app
         working-directory: packages/desktop
