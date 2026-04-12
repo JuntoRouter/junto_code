@@ -9,8 +9,8 @@ export const Mark = (props: { class?: string }) => {
       fill="none"
       xmlns="http://www.w3.org/2000/svg"
     >
-      <path data-slot="logo-logo-mark-shadow" d="M12 16H4V8H12V16Z" fill="var(--icon-weak-base)" />
-      <path data-slot="logo-logo-mark-o" d="M12 4H4V16H12V4ZM16 20H0V0H16V20Z" fill="var(--icon-strong-base)" />
+      <path data-slot="logo-logo-mark-shadow" d="M12 16H4V12H12V16Z" fill="var(--icon-weak-base)" />
+      <path data-slot="logo-logo-mark-j" d="M8 0H16V16H12V4H8V0ZM0 12H4V16H12V20H4V20H0V12Z" fill="var(--icon-strong-base)" />
     </svg>
   )
 }
@@ -25,8 +25,8 @@ export const Splash = (props: Pick<ComponentProps<"svg">, "ref" | "class">) => {
       fill="none"
       xmlns="http://www.w3.org/2000/svg"
     >
-      <path d="M60 80H20V40H60V80Z" fill="var(--icon-base)" />
-      <path d="M60 20H20V80H60V20ZM80 100H0V0H80V100Z" fill="var(--icon-strong-base)" />
+      <path d="M60 80H20V60H60V80Z" fill="var(--icon-base)" />
+      <path d="M40 0H80V80H60V20H40V0ZM0 60H20V80H60V100H20H0V60Z" fill="var(--icon-strong-base)" />
     </svg>
   )
 }
