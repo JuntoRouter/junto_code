@@ -163,6 +163,28 @@ jobs:
         with:
           draft: true
           generate_release_notes: true
+          body: |
+            ## Installation
+
+            ### macOS
+            1. Download the `.dmg` file for your architecture (aarch64 = Apple Silicon, x64 = Intel)
+            2. Open the DMG and drag JuntoCode to Applications
+            3. **Important:** The app is not yet code-signed. macOS will block it on first launch. To fix:
+
+            **Option A — Right-click to open:**
+            - Go to Applications, right-click JuntoCode → "Open"
+            - Click "Open" in the dialog that appears
+            - You only need to do this once
+
+            **Option B — Remove quarantine via Terminal:**
+            ```bash
+            xattr -cr /Applications/JuntoCode.app
+            ```
+
+            ### Windows
+            1. Download the `.exe` installer
+            2. Run the installer — Windows SmartScreen may warn about an unrecognized app
+            3. Click "More info" → "Run anyway"
           files: |
             artifacts/juntocode-desktop-*/**/*.dmg
             artifacts/juntocode-desktop-*/**/*.exe
