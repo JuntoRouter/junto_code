@@ -516,7 +516,7 @@ export const DialogJuntoDashboard: Component = () => {
                       variant="secondary"
                       size="small"
                       disabled={busy()}
-                      onClick={() => createAndSwitch("opencode-personal")}
+                      onClick={() => createAndSwitch("juntocode-personal")}
                     >
                       {busy() ? "Creating..." : "Personal Key"}
                     </Button>
@@ -529,7 +529,7 @@ export const DialogJuntoDashboard: Component = () => {
                                 variant="secondary"
                                 size="small"
                                 disabled={busy()}
-                                onClick={() => createAndSwitch(`opencode-team-${team().id.slice(0, 8)}`, team().id)}
+                                onClick={() => createAndSwitch(`juntocode-${team().name.toLowerCase().replace(/\s+/g, "-")}`, team().id)}
                               >
                                 {busy() ? "Creating..." : `${team().name} Key`}
                               </Button>

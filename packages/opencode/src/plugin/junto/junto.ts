@@ -91,16 +91,30 @@ async function fetchModels(apiKey?: string): Promise<Record<string, Model>> {
   }
 }
 
-async function ensureApiKey(token: string, teamId?: string): Promise<string> {
+async function findOrCreateApiKey(token: string): Promise<string> {
   const headers = { "Content-Type": "application/json", Authorization: `Bearer ${token}` }
-  const keyName = teamId ? `opencode-team-${teamId.slice(0, 8)}` : "opencode-personal"
-  const body: Record<string, unknown> = { name: keyName }
-  if (teamId) body.teamId = teamId
 
+  // Try to find an existing juntocode-* key
+  try {
+    const listRes = await fetch(`${JUNTO_API_BASE}/me/keys`, { headers })
+    if (listRes.ok) {
+      const data = (await listRes.json()) as { keys: Array<{ name: string; keyValue: string; teamId?: string | null }> }
+      const existing = data.keys?.find((k) => k.name.startsWith("juntocode-") && k.keyValue)
+      if (existing) {
+        log.info("Found existing API key", { name: existing.name })
+        return existing.keyValue
+      }
+    }
+  } catch {
+    log.warn("Failed to list existing keys, will create new one")
+  }
+
+  // No existing key found — create a personal key
+  const keyName = "juntocode-personal"
   const res = await fetch(`${JUNTO_API_BASE}/me/keys`, {
     method: "POST",
     headers,
-    body: JSON.stringify(body),
+    body: JSON.stringify({ name: keyName }),
   })
   if (!res.ok) {
     const err = await res.text().catch(() => "")
@@ -188,9 +202,8 @@ export async function JuntoAuthPlugin(_input: PluginInput): Promise<Hooks> {
                   clearTimeout(timeout)
                   httpServer.close()
 
-                  log.info("Token received, creating personal API key...")
-                  const apiKey = await ensureApiKey(token)
-                  log.info("API key created successfully")
+                  log.info("Token received, finding or creating API key...")
+                  const apiKey = await findOrCreateApiKey(token)
 
                   return { type: "success" as const, key: apiKey }
                 } catch (err) {
